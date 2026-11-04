@@ -257,6 +257,7 @@ export interface UserProfile {
   timezone: string;
   dateFormat: string;
   monthlyBudget?: number;
+  dailyBudgetGoal?: number;
   theme: 'light' | 'dark' | 'system';
   isOnboarded: boolean;
   createdAt: string;

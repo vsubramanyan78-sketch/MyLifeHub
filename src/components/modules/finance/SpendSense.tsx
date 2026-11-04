@@ -62,7 +62,7 @@ const CATEGORIES: TransactionCategory[] = [
 ];
 
 export const SpendSense: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, updateProfileData } = useAuth();
   const {
     transactions,
     accounts,
@@ -110,6 +110,21 @@ export const SpendSense: React.FC = () => {
   const [budgetCategory, setBudgetCategory] = useState<TransactionCategory>('Groceries');
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetThreshold, setBudgetThreshold] = useState('80');
+
+  // Daily Budget Goal State & Calculations
+  const [dailyGoalInput, setDailyGoalInput] = useState<string>(
+    String(profile?.dailyBudgetGoal || 2000)
+  );
+  const [isSavingGoal, setIsSavingGoal] = useState(false);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayExpenses = transactions
+    .filter((t) => t.type === 'expense' && t.date === todayStr)
+    .reduce((sum, t) => sum + t.reportingAmount, 0);
+
+  const currentDailyGoal = profile?.dailyBudgetGoal || 2000;
+  const todayGoalPercent = currentDailyGoal > 0 ? Math.min(100, Math.round((todayExpenses / currentDailyGoal) * 100)) : 0;
+  const isTodayOverGoal = todayExpenses > currentDailyGoal;
 
   // CSV Import State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
@@ -583,6 +598,100 @@ export const SpendSense: React.FC = () => {
       {/* TAB 3: BUDGETS & THRESHOLD ALERTS */}
       {activeTab === 'budgets' && (
         <div className="space-y-4">
+          {/* Daily Budget Goal Setting & Monitor Card */}
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-slate-800 text-white shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <Calendar className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm md:text-base text-white">
+                    Daily Budget Goal Setting
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Set your target maximum daily spend limit to monitor real-time daily expenses.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span
+                  className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                    isTodayOverGoal
+                      ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                  }`}
+                >
+                  {isTodayOverGoal ? 'Daily Limit Exceeded' : 'Within Daily Budget'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              {/* Input Form */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-300">
+                  Daily Spending Goal ({reportingCurrency})
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    value={dailyGoalInput}
+                    onChange={(e) => setDailyGoalInput(e.target.value)}
+                    placeholder="e.g. 2000"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!dailyGoalInput || Number(dailyGoalInput) <= 0) return;
+                      setIsSavingGoal(true);
+                      await updateProfileData({ dailyBudgetGoal: Number(dailyGoalInput) });
+                      setIsSavingGoal(false);
+                    }}
+                    disabled={isSavingGoal}
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 transition-colors"
+                  >
+                    {isSavingGoal ? 'Saving...' : 'Save Goal'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Today's Expense vs Goal Gauge */}
+              <div className="md:col-span-2 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300 font-medium">
+                    Today's Spending: <strong className="text-white">{formatCurrency(todayExpenses, reportingCurrency)}</strong>
+                  </span>
+                  <span className="text-slate-400">
+                    Goal Limit: <strong className="text-white">{formatCurrency(currentDailyGoal, reportingCurrency)}</strong> ({todayGoalPercent}%)
+                  </span>
+                </div>
+
+                <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden p-0.5 border border-slate-700">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isTodayOverGoal
+                        ? 'bg-rose-500'
+                        : todayGoalPercent > 80
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, todayGoalPercent)}%` }}
+                  />
+                </div>
+
+                <p className="text-[11px] text-slate-400">
+                  {isTodayOverGoal
+                    ? `You have spent ${formatCurrency(todayExpenses - currentDailyGoal, reportingCurrency)} over your target daily limit today.`
+                    : `You have ${formatCurrency(currentDailyGoal - todayExpenses, reportingCurrency)} remaining allowance for today.`}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-400">
               SpendSense monitors your monthly expenses and issues proactive alerts when budget utilization reaches thresholds.

@@ -83,6 +83,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onOpenQuickAct
     .reduce((sum, t) => sum + t.reportingAmount, 0);
   const netBalance = totalIncome - totalExpenses;
 
+  // Daily Budget Goal calculations
+  const todayStr = now.toISOString().split('T')[0];
+  const todayExpenses = transactions
+    .filter((t) => t.type === 'expense' && t.date === todayStr)
+    .reduce((sum, t) => sum + t.reportingAmount, 0);
+
+  const dailyBudgetGoal = profile?.dailyBudgetGoal || (profile?.monthlyBudget ? Math.round(profile.monthlyBudget / 30) : 2000);
+  const dailyBudgetPercent = dailyBudgetGoal > 0 ? Math.min(100, Math.round((todayExpenses / dailyBudgetGoal) * 100)) : 0;
+  const isDailyOverGoal = todayExpenses > dailyBudgetGoal;
+
   // Documents & Expiring
   const expiringDocs = documents.filter((d) => {
     if (!d.expiryDate) return false;
@@ -212,6 +222,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onOpenQuickAct
               <TrendingDown className="w-3 h-3 mr-0.5" />
               {formatCurrency(totalExpenses, reportingCurrency)}
             </span>
+          </div>
+
+          {/* Daily Budget Goal Highlight Bar */}
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-[11px] mb-1">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Today ({formatCurrency(dailyBudgetGoal, reportingCurrency)} limit):
+              </span>
+              <span className={`font-bold ${isDailyOverGoal ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {formatCurrency(todayExpenses, reportingCurrency)} ({dailyBudgetPercent}%)
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  isDailyOverGoal
+                    ? 'bg-rose-500'
+                    : dailyBudgetPercent > 80
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                }`}
+                style={{ width: `${dailyBudgetPercent}%` }}
+              />
+            </div>
           </div>
         </div>
 

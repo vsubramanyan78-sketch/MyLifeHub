@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Dna,
   BarChart3,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -70,6 +71,7 @@ export const PantryPilot: React.FC = () => {
     updateShoppingList,
     deleteShoppingList,
     purchaseShoppingItem,
+    requestBrowserNotificationPermission,
   } = useData();
 
   const reportingCurrency = profile?.preferredCurrency || 'INR';
@@ -245,6 +247,21 @@ export const PantryPilot: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          <button
+            onClick={async () => {
+              const granted = await requestBrowserNotificationPermission();
+              if (granted) {
+                alert('Browser notifications enabled! You will now receive low-stock alerts automatically.');
+              } else {
+                alert('Notification permission not granted. Please allow notifications in your browser settings.');
+              }
+            }}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"
+            title="Enable browser notifications for low-stock alerts"
+          >
+            <Bell className="w-3.5 h-3.5 text-amber-500" />
+            <span>Low-Stock Alerts</span>
+          </button>
           <button
             onClick={() => setIsAddShoppingOpen(true)}
             className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"

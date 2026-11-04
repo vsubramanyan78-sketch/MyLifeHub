@@ -12,6 +12,7 @@
         "timezone": { "type": "string" },
         "dateFormat": { "type": "string" },
         "monthlyBudget": { "type": "number" },
+        "dailyBudgetGoal": { "type": "number" },
         "theme": { "type": "string" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }

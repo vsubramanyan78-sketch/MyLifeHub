@@ -111,6 +111,8 @@ interface DataContextType {
   seedDemoData: () => Promise<void>;
   exportAllData: () => Promise<string>;
   reconcileAlerts: () => Promise<void>;
+  requestBrowserNotificationPermission: () => Promise<boolean>;
+  sendLowStockNotification: (item: PantryItem) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -682,6 +684,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Check low stock trigger
     if (newQty <= item.lowStockThreshold) {
+      sendLowStockNotification({ ...item, quantity: newQty });
       await triggerAutomationEvent(
         'STOCK_LOW',
         'PantryPilot',
@@ -812,6 +815,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await deleteDoc(doc(db, 'users', user.uid, 'reminders', id));
   };
 
+  // Ref to keep track of low stock items notified during session
+  const notifiedLowStockRef = React.useRef<Set<string>>(new Set());
+
+  const sendLowStockNotification = useCallback((item: PantryItem) => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+
+    if (Notification.permission === 'granted') {
+      try {
+        new Notification(`Low Stock Alert: ${item.name}`, {
+          body: `${item.name} has reached low stock limit (${item.quantity} ${item.unit} remaining, threshold: ${item.lowStockThreshold} ${item.unit}). Time to restock!`,
+          icon: '/favicon.ico',
+          tag: `low_stock_${item.id}`,
+        });
+      } catch (err) {
+        console.warn('Browser notification failed:', err);
+      }
+    }
+  }, []);
+
+  const requestBrowserNotificationPermission = async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  };
+
   // Reminder Reconciliation Check on App Boot
   const reconcileAlerts = useCallback(async () => {
     if (!user) return;
@@ -861,6 +892,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             relatedRecordId: item.id,
             createdAt: new Date().toISOString(),
           });
+        }
+
+        // Trigger browser notification for low stock item if not notified this session
+        const notifyKey = `${item.id}_${item.quantity}`;
+        if (!notifiedLowStockRef.current.has(notifyKey)) {
+          notifiedLowStockRef.current.add(notifyKey);
+          sendLowStockNotification(item);
         }
       }
     }
@@ -1244,6 +1282,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         seedDemoData,
         exportAllData,
         reconcileAlerts,
+        requestBrowserNotificationPermission,
+        sendLowStockNotification,
       }}
     >
       {children}

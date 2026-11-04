@@ -86,6 +86,26 @@ export const AIInsightsCard: React.FC<AIInsightsCardProps> = ({
     });
   }
 
+  // Check 1b: Daily Budget Goal
+  const todayExpenses = transactions
+    .filter((t) => t.type === 'expense' && t.date === todayStr)
+    .reduce((sum, t) => sum + t.reportingAmount, 0);
+  const dailyBudgetGoal = profile?.dailyBudgetGoal || (profile?.monthlyBudget ? Math.round(profile.monthlyBudget / 30) : 2000);
+
+  if (dailyBudgetGoal > 0 && todayExpenses > dailyBudgetGoal) {
+    const overspend = todayExpenses - dailyBudgetGoal;
+    allWarnings.push({
+      id: 'fin_daily_goal_exceeded',
+      category: 'finance',
+      severity: 'warning',
+      title: 'Daily Budget Limit Exceeded Today',
+      description: `Today's spending (${formatCurrency(todayExpenses, reportingCurrency)}) exceeded your daily goal (${formatCurrency(dailyBudgetGoal, reportingCurrency)}) by ${formatCurrency(overspend, reportingCurrency)}.`,
+      metric: `+${formatCurrency(overspend, reportingCurrency)}`,
+      actionLabel: 'Check Goal in SpendSense',
+      actionTab: 'finances',
+    });
+  }
+
   // Check 2: Budgets exceeded or nearing threshold
   budgets.forEach((b) => {
     const catExpenses = monthlyTransactions
