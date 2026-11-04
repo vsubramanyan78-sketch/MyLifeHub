@@ -14,6 +14,9 @@ import {
   ShieldCheck,
   AlertTriangle,
   Clock,
+  Boxes,
+  MapPin,
+  Gamepad2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -66,6 +69,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'FixFlow',
       sublabel: 'Assets & Maintenance',
       icon: Wrench,
+      badge: null,
+    },
+    {
+      id: 'home3d',
+      label: '3D Home & Game',
+      sublabel: 'Three.js Twin',
+      icon: Boxes,
+      badge: '3D',
+      badgeColor: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+    },
+    {
+      id: 'maps',
+      label: 'Service Locator',
+      sublabel: 'Google Maps',
+      icon: MapPin,
       badge: null,
     },
     {

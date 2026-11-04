@@ -16,6 +16,7 @@ import {
   X,
   ListPlus,
   RefreshCw,
+  Dna,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -27,6 +28,7 @@ import {
   ShoppingListItem,
 } from '../../../types';
 import { formatCurrency } from '../../../lib/currency';
+import { NutritionScienceModal } from './NutritionScienceModal';
 
 const PANTRY_CATEGORIES: PantryCategory[] = [
   'Vegetables',
@@ -62,6 +64,7 @@ export const PantryPilot: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'inventory' | 'shopping' | 'recipes'>('inventory');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBioIngredient, setSelectedBioIngredient] = useState<string | null>(null);
 
   // Add Item Modal
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -361,9 +364,9 @@ export const PantryPilot: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Bottom actions: Quick Consume / Delete */}
+                    {/* Bottom actions: Quick Consume / Science / Delete */}
                     <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-1.5">
                         <button
                           onClick={() => consumePantryItem(item.id, 1)}
                           className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 transition-colors"
@@ -371,6 +374,14 @@ export const PantryPilot: React.FC = () => {
                         >
                           <Minus className="w-3 h-3" />
                           <span>Use 1 {item.unit}</span>
+                        </button>
+                        <button
+                          onClick={() => setSelectedBioIngredient(item.name)}
+                          className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold transition-colors"
+                          title="View Biochemical & Nutritional Analysis"
+                        >
+                          <Dna className="w-3 h-3" />
+                          <span>Science</span>
                         </button>
                       </div>
 
@@ -385,6 +396,14 @@ export const PantryPilot: React.FC = () => {
                 );
               })}
             </div>
+          )}
+
+          {/* Bioscience Modal */}
+          {selectedBioIngredient && (
+            <NutritionScienceModal
+              ingredientName={selectedBioIngredient}
+              onClose={() => setSelectedBioIngredient(null)}
+            />
           )}
         </div>
       )}

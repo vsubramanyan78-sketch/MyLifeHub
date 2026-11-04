@@ -246,6 +246,229 @@ Instructions:
   }
 });
 
+// --- Google Search Grounding Endpoint ---
+app.post('/api/gemini/search-grounded', async (req: Request, res: Response) => {
+  try {
+    const { query } = req.body;
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.json({
+        success: true,
+        answer: 'Search Grounding requires a valid GEMINI_API_KEY configured.',
+        sources: [],
+      });
+    }
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: query,
+      config: {
+        tools: [{ googleSearch: {} }],
+        systemInstruction:
+          'You are a live product & maintenance researcher for MyLifeHub. Use Google Search grounding to find authentic product manuals, recall notices, current market prices, or authorized service policies.',
+      },
+    });
+
+    const candidate = response.candidates?.[0];
+    const text = response.text || '';
+    const groundingMetadata = candidate?.groundingMetadata;
+    const webSearchSources = groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+      title: chunk.web?.title || 'Web Source',
+      uri: chunk.web?.uri || '#',
+    })) || [];
+
+    return res.json({
+      success: true,
+      answer: text,
+      sources: webSearchSources,
+      searchQueries: groundingMetadata?.webSearchQueries || [],
+    });
+  } catch (err: any) {
+    console.error('Error in search-grounded:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed search query' });
+  }
+});
+
+// --- Google Maps Grounding & Nearby Locator Endpoint ---
+app.post('/api/gemini/maps-grounded', async (req: Request, res: Response) => {
+  try {
+    const { query, location } = req.body;
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.json({
+        success: true,
+        answer: 'Maps Grounding requires GEMINI_API_KEY.',
+        places: [],
+      });
+    }
+
+    const promptText = location
+      ? `${query} near ${location.city || location.name || 'my location'}`
+      : query;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: promptText,
+      config: {
+        tools: [{ googleMaps: {} }],
+        systemInstruction:
+          'You are MyLifeHub Local Service Navigator. Use Google Maps Grounding to recommend authorized appliance technicians, vehicle service garages, or organic grocery supermarkets. Include verified addresses, operating hours, and ratings when provided by maps grounding.',
+      },
+    });
+
+    const candidate = response.candidates?.[0];
+    const text = response.text || '';
+    const groundingMetadata = candidate?.groundingMetadata;
+
+    return res.json({
+      success: true,
+      answer: text,
+      groundingMetadata,
+    });
+  } catch (err: any) {
+    console.error('Error in maps-grounded:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed maps query' });
+  }
+});
+
+// --- Audio Transcription (gemini-3.5-transcribe) ---
+app.post('/api/gemini/transcribe', async (req: Request, res: Response) => {
+  try {
+    const { audioData, mimeType } = req.body;
+    const ai = getGeminiClient();
+
+    if (!ai || !audioData) {
+      return res.json({
+        success: true,
+        transcript: 'Voice transcription demo mode (configure GEMINI_API_KEY for live audio processing).',
+      });
+    }
+
+    const cleanBase64 = audioData.replace(/^data:[^;]+;base64,/, '');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-transcribe',
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType || 'audio/webm',
+            data: cleanBase64,
+          },
+        },
+        {
+          text: 'Transcribe this voice audio accurately into English text. If the user mentions financial expenses, documents, assets, or groceries, transcribe clearly.',
+        },
+      ],
+    });
+
+    const transcript = response.text || '';
+    return res.json({ success: true, transcript });
+  } catch (err: any) {
+    console.error('Error in audio transcribe:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed transcription' });
+  }
+});
+
+// --- Bioscience / Nutritional Science Engine ---
+app.post('/api/gemini/nutrition-science', async (req: Request, res: Response) => {
+  try {
+    const { ingredientName } = req.body;
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.json({
+        success: true,
+        data: {
+          ingredient: ingredientName,
+          macronutrients: { protein: 'Moderate', carbs: 'Variable', fats: 'Low', fiber: 'High' },
+          micronutrients: ['Vitamin C', 'Potassium', 'Antioxidants'],
+          glycemicIndex: 'Low to Medium',
+          preservationScience: 'Store at cool temperatures (2-4°C) to inhibit enzymatic oxidation.',
+          biochemicalNotes: 'Natural organic phytochemical compounds support cellular homeostasis.',
+        },
+      });
+    }
+
+    const systemInstruction = `You are a Bioscience and Nutritional Chemistry specialist for PantryPilot.
+Analyze the requested food ingredient from a scientific biochemistry and nutrition perspective.
+Return valid JSON:
+{
+  "ingredient": string,
+  "macronutrients": {
+    "protein": string (e.g. "8.5g per 100g"),
+    "carbs": string,
+    "fats": string,
+    "fiber": string,
+    "calories": string
+  },
+  "micronutrients": [string, ...],
+  "glycemicIndex": string (Low, Medium, or High with score if known),
+  "preservationScience": string (biochemical rationale for best storage: humidity, temperature, enzymatic activity, ripening ethylene sensitivity),
+  "biochemicalNotes": string (phytochemicals, polyphenols, enzymes, or microbial spoilage vectors)
+}`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: [{ text: `Analyze the bioscience and nutritional composition of "${ingredientName}".` }],
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    return res.json({ success: true, data: parsed });
+  } catch (err: any) {
+    console.error('Error in nutrition-science:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed bioscience analysis' });
+  }
+});
+
+// --- Multi-Turn Chatbot with Memory ---
+app.post('/api/gemini/chat', async (req: Request, res: Response) => {
+  try {
+    const { history, message, systemPrompt } = req.body;
+    const ai = getGeminiClient();
+
+    if (!ai) {
+      return res.json({
+        success: true,
+        reply: 'I am running in local mode. Please configure GEMINI_API_KEY for dynamic conversations.',
+      });
+    }
+
+    // Convert history format to Gemini SDK contents format
+    const contents: any[] = [];
+    if (Array.isArray(history)) {
+      for (const h of history) {
+        contents.push({
+          role: h.role === 'user' ? 'user' : 'model',
+          parts: [{ text: h.text }],
+        });
+      }
+    }
+    contents.push({
+      role: 'user',
+      parts: [{ text: message }],
+    });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents,
+      config: {
+        systemInstruction: systemPrompt || 'You are MyLifeHub Chatbot, a friendly, authoritative personal life organizer.',
+      },
+    });
+
+    return res.json({ success: true, reply: response.text || '' });
+  } catch (err: any) {
+    console.error('Error in multi-turn chat:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Chat error' });
+  }
+});
+
 // --- Gemini Recipe Suggestions from Pantry Items ---
 app.post('/api/gemini/recipes', async (req: Request, res: Response) => {
   try {

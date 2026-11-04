@@ -14,6 +14,9 @@ import {
   Bot,
   User,
   HelpCircle,
+  Search,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -45,7 +48,7 @@ export const IntelligenceView: React.FC = () => {
 
   const reportingCurrency = profile?.preferredCurrency || 'INR';
 
-  const [activeTab, setActiveTab] = useState<'assistant' | 'automation' | 'insights'>('assistant');
+  const [activeTab, setActiveTab] = useState<'assistant' | 'automation' | 'insights' | 'search'>('assistant');
   const [messages, setMessages] = useState<
     Array<{
       sender: 'user' | 'ai';
@@ -64,6 +67,40 @@ export const IntelligenceView: React.FC = () => {
   const [inputQuery, setInputQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
+
+  // Search Grounding State
+  const [searchGroundQuery, setSearchGroundQuery] = useState('');
+  const [searchGroundResult, setSearchGroundResult] = useState<{
+    answer: string;
+    sources: Array<{ title: string; uri: string }>;
+    searchQueries: string[];
+  } | null>(null);
+  const [isSearchingGround, setIsSearchingGround] = useState(false);
+
+  const handleSearchGrounded = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchGroundQuery.trim() || isSearchingGround) return;
+
+    setIsSearchingGround(true);
+    setSearchGroundResult(null);
+
+    try {
+      const resp = await fetch('/api/gemini/search-grounded', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchGroundQuery }),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        setSearchGroundResult(data);
+      }
+    } catch (err) {
+      console.error('Search grounding error:', err);
+    } finally {
+      setIsSearchingGround(false);
+    }
+  };
 
   // Send query to server-side Gemini assistant
   const handleSend = async (queryText?: string) => {
@@ -224,6 +261,17 @@ export const IntelligenceView: React.FC = () => {
         >
           <Lightbulb className="w-3.5 h-3.5" />
           <span>Automated Insights</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('search')}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors ${
+            activeTab === 'search'
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Globe className="w-3.5 h-3.5 text-blue-400" />
+          <span>Google Search Grounding</span>
         </button>
       </div>
 
@@ -503,6 +551,84 @@ export const IntelligenceView: React.FC = () => {
               </span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 4: GOOGLE SEARCH GROUNDED RESEARCH */}
+      {activeTab === 'search' && (
+        <div className="space-y-4">
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-blue-600/10 border border-blue-500/20 space-y-3">
+            <div className="flex items-center space-x-2">
+              <Globe className="w-5 h-5 text-blue-500" />
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                Live Google Search Grounding for Household Intelligence
+              </h3>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+              Research real-time manufacturer warranty policies, appliance user manuals, vehicle recall bulletins, or consumer protection guidelines grounded with live web citations.
+            </p>
+
+            <form onSubmit={handleSearchGrounded} className="flex gap-2 max-w-xl">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="e.g. LG French Door Refrigerator compressor warranty policy India"
+                  value={searchGroundQuery}
+                  onChange={(e) => setSearchGroundQuery(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-xs pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSearchingGround || !searchGroundQuery.trim()}
+                className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md transition-all shrink-0"
+              >
+                {isSearchingGround ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Search className="w-3.5 h-3.5" />
+                )}
+                <span>Search Web</span>
+              </button>
+            </form>
+          </div>
+
+          {searchGroundResult && (
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 text-xs">
+              <div>
+                <span className="block text-[10px] uppercase font-bold text-blue-500 tracking-wider mb-1.5">
+                  Grounded Synthesis Result
+                </span>
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line text-xs">
+                  {searchGroundResult.answer}
+                </p>
+              </div>
+
+              {searchGroundResult.sources?.length > 0 && (
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
+                    Verified Google Search Web Sources:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {searchGroundResult.sources.map((src, i) => (
+                      <a
+                        key={i}
+                        href={src.uri}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] hover:border-blue-500 transition-colors"
+                      >
+                        <Globe className="w-3 h-3 text-blue-500" />
+                        <span className="truncate max-w-xs">{src.title}</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

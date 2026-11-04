@@ -15,6 +15,9 @@ import { PantryPilot } from './components/modules/pantry/PantryPilot';
 import { IntelligenceView } from './components/modules/intelligence/IntelligenceView';
 import { RemindersView } from './components/modules/reminders/RemindersView';
 import { SettingsView } from './components/modules/settings/SettingsView';
+import { Home3DViewer } from './components/modules/home3d/Home3DViewer';
+import { LocalServiceLocator } from './components/modules/maps/LocalServiceLocator';
+import { VoiceInputModal } from './components/voice/VoiceInputModal';
 
 // Quick Modals
 import {
@@ -60,6 +63,7 @@ const MainAppContent: React.FC = () => {
   const [quickAction, setQuickAction] = useState<
     'expense' | 'document' | 'asset' | 'grocery' | 'reminder' | null
   >(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
 
   // Quick Expense fields
   const [qExpenseDesc, setQExpenseDesc] = useState('');
@@ -195,6 +199,7 @@ const MainAppContent: React.FC = () => {
             }
           }}
           onOpenAI={() => setCurrentTab('intelligence')}
+          onOpenVoice={() => setIsVoiceModalOpen(true)}
           onSelectSearchItem={handleSelectSearchItem}
         />
 
@@ -216,6 +221,12 @@ const MainAppContent: React.FC = () => {
 
           {currentTab === 'assets' && <FixFlow />}
 
+          {currentTab === 'home3d' && (
+            <Home3DViewer onServiceAsset={() => setCurrentTab('assets')} />
+          )}
+
+          {currentTab === 'maps' && <LocalServiceLocator />}
+
           {currentTab === 'pantry' && <PantryPilot />}
 
           {currentTab === 'intelligence' && <IntelligenceView />}
@@ -225,6 +236,20 @@ const MainAppContent: React.FC = () => {
           {currentTab === 'settings' && <SettingsView />}
         </main>
       </div>
+
+      {/* Voice Input Modal */}
+      <VoiceInputModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onTranscriptReady={(transcript, action) => {
+          if (action === 'expense') {
+            setQExpenseDesc(transcript);
+            setQuickAction('expense');
+          } else {
+            setCurrentTab('intelligence');
+          }
+        }}
+      />
 
       {/* Quick Action Dialogs */}
       {quickAction === 'expense' && (

@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   X,
   ExternalLink,
+  Mic,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -25,12 +26,14 @@ interface NavbarProps {
   onOpenQuickAction: (action: 'expense' | 'document' | 'asset' | 'grocery' | 'reminder') => void;
   onOpenAI: () => void;
   onSelectSearchItem: (type: string, id: string) => void;
+  onOpenVoice?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenQuickAction,
   onOpenAI,
   onSelectSearchItem,
+  onOpenVoice,
 }) => {
   const { profile, updateProfileData } = useAuth();
   const { documents, transactions, assets, pantryItems, reminders } = useData();
@@ -320,6 +323,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Voice Command Button */}
+        {onOpenVoice && (
+          <button
+            onClick={onOpenVoice}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-medium text-xs transition-all"
+            title="Voice Command & Expense Recording"
+          >
+            <Mic className="w-3.5 h-3.5 text-blue-500" />
+            <span className="hidden sm:inline">Voice</span>
+          </button>
+        )}
 
         {/* AI Assistant Button */}
         <button
