@@ -21,6 +21,7 @@ import {
   PieChart as PieIcon,
   Layers,
   Download,
+  Sparkles,
 } from 'lucide-react';
 import {
   BarChart,
@@ -125,6 +126,54 @@ export const SpendSense: React.FC = () => {
   const currentDailyGoal = profile?.dailyBudgetGoal || 2000;
   const todayGoalPercent = currentDailyGoal > 0 ? Math.min(100, Math.round((todayExpenses / currentDailyGoal) * 100)) : 0;
   const isTodayOverGoal = todayExpenses > currentDailyGoal;
+
+  // Historical Spending Trend & Predictive Monthly Budget Forecast Calculations
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const daysElapsed = Math.max(1, now.getDate());
+  const totalDaysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const daysRemaining = Math.max(0, totalDaysInMonth - daysElapsed);
+
+  const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+  const currentMonthExpensesList = transactions.filter(
+    (t) => t.type === 'expense' && t.date.startsWith(currentMonthPrefix)
+  );
+  const currentMonthSpent = currentMonthExpensesList.reduce((sum, t) => sum + t.reportingAmount, 0);
+
+  // Group historical expenses by month (excluding current month)
+  const monthlyExpensesMap: Record<string, number> = {};
+  transactions
+    .filter((t) => t.type === 'expense' && !t.date.startsWith(currentMonthPrefix))
+    .forEach((t) => {
+      const monthKey = t.date.substring(0, 7);
+      monthlyExpensesMap[monthKey] = (monthlyExpensesMap[monthKey] || 0) + t.reportingAmount;
+    });
+
+  const historicalMonthTotals = Object.values(monthlyExpensesMap);
+  const historicalAvgMonthlySpend =
+    historicalMonthTotals.length > 0
+      ? historicalMonthTotals.reduce((a, b) => a + b, 0) / historicalMonthTotals.length
+      : 0;
+
+  // Run-rate projection
+  const currentDailyPace = currentMonthSpent / daysElapsed;
+  const runRateMonthEnd = currentDailyPace * totalDaysInMonth;
+
+  // Blend current run rate (70%) with historical baseline (30%) if available
+  const forecastedMonthEndSpend =
+    historicalAvgMonthlySpend > 0
+      ? Math.round(0.7 * runRateMonthEnd + 0.3 * historicalAvgMonthlySpend)
+      : Math.round(runRateMonthEnd);
+
+  const monthlyBudgetLimit = profile?.monthlyBudget || 50000;
+  const projectedOverspend = Math.max(0, forecastedMonthEndSpend - monthlyBudgetLimit);
+  const projectedPercent = Math.min(200, Math.round((forecastedMonthEndSpend / monthlyBudgetLimit) * 100));
+  const isProjectedOver = forecastedMonthEndSpend > monthlyBudgetLimit;
+
+  // Recommended daily limit for remainder of month to stay under budget
+  const remainingBudget = Math.max(0, monthlyBudgetLimit - currentMonthSpent);
+  const recommendedDailyPace = daysRemaining > 0 ? remainingBudget / daysRemaining : 0;
 
   // CSV Import State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
@@ -687,6 +736,127 @@ export const SpendSense: React.FC = () => {
                   {isTodayOverGoal
                     ? `You have spent ${formatCurrency(todayExpenses - currentDailyGoal, reportingCurrency)} over your target daily limit today.`
                     : `You have ${formatCurrency(currentDailyGoal - todayExpenses, reportingCurrency)} remaining allowance for today.`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Predictive Monthly Budget & End-of-Month Overspend Forecast Card */}
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-bold text-sm md:text-base text-slate-900 dark:text-white">
+                      Predictive Monthly Budget Forecast
+                    </h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase">
+                      Trend Intelligence
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    End-of-month spending prediction based on current daily pace and historical trends.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span
+                  className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                    isProjectedOver
+                      ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                      : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                  }`}
+                >
+                  {isProjectedOver
+                    ? `Risk of Overspending (+${formatCurrency(projectedOverspend, reportingCurrency)})`
+                    : 'Forecasted Within Budget'}
+                </span>
+              </div>
+            </div>
+
+            {/* Metric Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Current Spend ({daysElapsed}d)
+                </span>
+                <span className="text-base font-extrabold text-slate-900 dark:text-white">
+                  {formatCurrency(currentMonthSpent, reportingCurrency)}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Current Daily Pace
+                </span>
+                <span className="text-base font-extrabold text-blue-500">
+                  {formatCurrency(currentDailyPace, reportingCurrency)}/day
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Projected Month-End
+                </span>
+                <span className={`text-base font-extrabold ${isProjectedOver ? 'text-rose-500' : 'text-emerald-500'}`}>
+                  {formatCurrency(forecastedMonthEndSpend, reportingCurrency)}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Monthly Budget Limit
+                </span>
+                <span className="text-base font-extrabold text-slate-900 dark:text-white">
+                  {formatCurrency(monthlyBudgetLimit, reportingCurrency)}
+                </span>
+              </div>
+            </div>
+
+            {/* Visual Gauge Bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                  Forecast Progress vs Monthly Ceiling ({projectedPercent}% of Limit):
+                </span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">
+                  {daysRemaining} days remaining in month
+                </span>
+              </div>
+
+              <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    isProjectedOver
+                      ? 'bg-rose-500'
+                      : projectedPercent > 80
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(100, projectedPercent)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Recommended Target Action Plan */}
+            <div className={`p-3.5 rounded-2xl border text-xs flex items-start space-x-2.5 ${
+              isProjectedOver
+                ? 'bg-rose-500/5 border-rose-500/20 text-rose-900 dark:text-rose-200'
+                : 'bg-emerald-500/5 border-emerald-500/20 text-emerald-900 dark:text-emerald-200'
+            }`}>
+              <Sparkles className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+              <div className="flex-1">
+                <span className="font-bold block text-[11px] uppercase tracking-wider mb-0.5">
+                  Predictive Pace Recommendation
+                </span>
+                <p className="leading-relaxed">
+                  {isProjectedOver
+                    ? `At your current velocity (${formatCurrency(currentDailyPace, reportingCurrency)}/day), you are projected to exceed your monthly budget by ${formatCurrency(projectedOverspend, reportingCurrency)}. To stay under limit, reduce your daily spend to ${formatCurrency(recommendedDailyPace, reportingCurrency)}/day for the remaining ${daysRemaining} days.`
+                    : `Your spending velocity is well within bounds. You have a projected buffer of ${formatCurrency(monthlyBudgetLimit - forecastedMonthEndSpend, reportingCurrency)} by end of month at your current daily rate.`}
                 </p>
               </div>
             </div>
