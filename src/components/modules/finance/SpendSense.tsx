@@ -20,6 +20,7 @@ import {
   X,
   PieChart as PieIcon,
   Layers,
+  Download,
 } from 'lucide-react';
 import {
   BarChart,
@@ -238,6 +239,49 @@ export const SpendSense: React.FC = () => {
     return matchesSearch && matchesType && matchesCat && matchesAcc;
   });
 
+  // Export Transactions to CSV file
+  const handleExportCsv = () => {
+    const listToExport = filteredTransactions.length > 0 ? filteredTransactions : transactions;
+    if (listToExport.length === 0) return;
+
+    const headers = [
+      'Date',
+      'Description',
+      'Amount',
+      'Original Currency',
+      `Reporting Amount (${reportingCurrency})`,
+      'Type',
+      'Category',
+      'Account Name',
+      'Notes',
+      'Source Module',
+    ];
+
+    const rows = listToExport.map((t) => [
+      t.date,
+      `"${(t.description || '').replace(/"/g, '""')}"`,
+      t.amount,
+      t.currency,
+      t.reportingAmount,
+      t.type,
+      t.category,
+      `"${(t.accountName || '').replace(/"/g, '""')}"`,
+      `"${(t.notes || '').replace(/"/g, '""')}"`,
+      t.sourceModule || 'SpendSense',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SpendSense_Transactions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Calculate totals
   const totalIncome = transactions
     .filter((t) => t.type === 'income')
@@ -263,7 +307,7 @@ export const SpendSense: React.FC = () => {
             </h1>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Personal cashflow, multi-currency wallets, budget enforcement, and CSV statement imports.
+            Personal cashflow, multi-currency wallets, budget enforcement, and CSV statement imports & exports.
           </p>
         </div>
 
@@ -280,8 +324,17 @@ export const SpendSense: React.FC = () => {
             onClick={() => csvInputRef.current?.click()}
             className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"
           >
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-3.5 h-3.5 text-blue-500" />
             <span>Import CSV</span>
+          </button>
+          <button
+            onClick={handleExportCsv}
+            disabled={transactions.length === 0}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors disabled:opacity-50"
+            title="Export transaction history to CSV format"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Export CSV</span>
           </button>
           <button
             onClick={() => setIsAddTxOpen(true)}

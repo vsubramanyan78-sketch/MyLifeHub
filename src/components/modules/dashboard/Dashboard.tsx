@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
 import { formatCurrency } from '../../../lib/currency';
+import { AIInsightsCard } from './AIInsightsCard';
 
 interface DashboardProps {
   onNavigate: (tab: string) => void;
@@ -177,6 +178,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onOpenQuickAct
           </button>
         </div>
       </div>
+
+      {/* AI Insights & Priority System Warnings Card */}
+      <AIInsightsCard
+        onNavigate={onNavigate}
+        onOpenQuickAction={onOpenQuickAction}
+      />
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

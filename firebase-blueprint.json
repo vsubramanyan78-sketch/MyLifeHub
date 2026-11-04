@@ -208,6 +208,8 @@
         "status": { "type": "string" },
         "relatedModule": { "type": "string" },
         "relatedRecordId": { "type": "string" },
+        "isRecurring": { "type": "boolean" },
+        "frequency": { "type": "string", "enum": ["Daily", "Weekly", "Monthly"] },
         "createdAt": { "type": "string" },
         "completedAt": { "type": "string" }
       },

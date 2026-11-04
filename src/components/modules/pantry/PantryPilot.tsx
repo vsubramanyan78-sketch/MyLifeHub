@@ -17,6 +17,7 @@ import {
   ListPlus,
   RefreshCw,
   Dna,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -44,6 +45,18 @@ const PANTRY_CATEGORIES: PantryCategory[] = [
 
 const UNITS: PantryUnit[] = ['kg', 'g', 'litre', 'ml', 'pieces', 'packets', 'boxes'];
 
+const CATEGORY_CAPACITIES: Record<PantryCategory, { capacity: number; defaultUnit: string }> = {
+  Vegetables: { capacity: 10, defaultUnit: 'kg' },
+  Fruits: { capacity: 8, defaultUnit: 'kg' },
+  Grains: { capacity: 15, defaultUnit: 'kg' },
+  Dairy: { capacity: 8, defaultUnit: 'litre' },
+  'Meat and Eggs': { capacity: 8, defaultUnit: 'kg' },
+  Snacks: { capacity: 12, defaultUnit: 'packets' },
+  Beverages: { capacity: 10, defaultUnit: 'litre' },
+  'Household Supplies': { capacity: 15, defaultUnit: 'pieces' },
+  Other: { capacity: 10, defaultUnit: 'units' },
+};
+
 export const PantryPilot: React.FC = () => {
   const { profile } = useAuth();
   const {
@@ -62,6 +75,32 @@ export const PantryPilot: React.FC = () => {
   const reportingCurrency = profile?.preferredCurrency || 'INR';
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'shopping' | 'recipes'>('inventory');
+
+  // Calculate category usage vs total capacity statistics
+  const categoryUsageStats = PANTRY_CATEGORIES.map((cat) => {
+    const catItems = pantryItems.filter((item) => item.category === cat);
+    const currentUsage = catItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const config = CATEGORY_CAPACITIES[cat] || { capacity: 10, defaultUnit: 'units' };
+    const capacity = Math.max(config.capacity, Math.ceil(currentUsage));
+    const usagePercent = Math.min(100, Math.round((currentUsage / capacity) * 100));
+    const lowStockCount = catItems.filter((i) => i.quantity <= i.lowStockThreshold).length;
+
+    return {
+      category: cat,
+      currentUsage: Math.round(currentUsage * 10) / 10,
+      capacity,
+      unit: catItems[0]?.unit || config.defaultUnit,
+      usagePercent,
+      itemCount: catItems.length,
+      lowStockCount,
+    };
+  });
+
+  const totalCurrentStock = categoryUsageStats.reduce((sum, s) => sum + s.currentUsage, 0);
+  const totalCategoryCapacity = categoryUsageStats.reduce((sum, s) => sum + s.capacity, 0);
+  const overallPantryFillPercent = totalCategoryCapacity > 0
+    ? Math.min(100, Math.round((totalCurrentStock / totalCategoryCapacity) * 100))
+    : 0;
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBioIngredient, setSelectedBioIngredient] = useState<string | null>(null);
@@ -265,6 +304,113 @@ export const PantryPilot: React.FC = () => {
       {/* TAB 1: PANTRY INVENTORY */}
       {activeTab === 'inventory' && (
         <div className="space-y-4">
+          {/* Visual Progress Bar Section: Food Category Capacity & Usage */}
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Category Storage Capacity & Usage
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Visual stocking capacity vs current inventory usage per food category.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2.5">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  Overall Pantry: <strong className="text-blue-500 font-extrabold">{overallPantryFillPercent}% Filled</strong>
+                </span>
+                <div className="w-28 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      overallPantryFillPercent < 25
+                        ? 'bg-amber-500'
+                        : overallPantryFillPercent > 85
+                        ? 'bg-indigo-500'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${overallPantryFillPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Food Category Progress Bars Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {categoryUsageStats.map((stat) => {
+                const isSelected = selectedCategory === stat.category;
+                const isLow = stat.usagePercent < 25;
+                const isHigh = stat.usagePercent > 85;
+
+                return (
+                  <div
+                    key={stat.category}
+                    onClick={() => setSelectedCategory(isSelected ? 'All' : stat.category)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-500/10 border-blue-500/50 ring-1 ring-blue-500/30'
+                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center space-x-1.5 min-w-0">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {stat.category}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          ({stat.itemCount} {stat.itemCount === 1 ? 'item' : 'items'})
+                        </span>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                          isLow
+                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                            : isHigh
+                            ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
+                            : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                        }`}
+                      >
+                        {stat.usagePercent}%
+                      </span>
+                    </div>
+
+                    {/* Current Usage vs Capacity Text */}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+                      <span>
+                        Usage: <strong className="text-slate-800 dark:text-slate-200">{stat.currentUsage}</strong> / {stat.capacity} {stat.unit}
+                      </span>
+                      {stat.lowStockCount > 0 && (
+                        <span className="text-rose-500 font-semibold text-[10px]">
+                          {stat.lowStockCount} low
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Visual Progress Bar */}
+                    <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isLow
+                            ? 'bg-gradient-to-r from-amber-500 to-amber-400'
+                            : isHigh
+                            ? 'bg-gradient-to-r from-indigo-500 to-blue-500'
+                            : 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                        }`}
+                        style={{ width: `${stat.usagePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">

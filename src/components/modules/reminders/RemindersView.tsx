@@ -43,6 +43,8 @@ export const RemindersView: React.FC = () => {
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState<ReminderCategory>('General');
   const [priority, setPriority] = useState<ReminderPriority>('medium');
+  const [isRecurring, setIsRecurring] = useState<boolean>(false);
+  const [frequency, setFrequency] = useState<'Daily' | 'Weekly' | 'Monthly'>('Weekly');
 
   const now = new Date().toISOString().split('T')[0];
 
@@ -57,11 +59,15 @@ export const RemindersView: React.FC = () => {
       dueDate,
       priority,
       status: 'pending',
+      isRecurring,
+      frequency: isRecurring ? frequency : undefined,
     });
 
     setIsAddOpen(false);
     setTitle('');
     setDesc('');
+    setIsRecurring(false);
+    setFrequency('Weekly');
   };
 
   const handleToggleComplete = async (rem: ReminderItem) => {
@@ -236,6 +242,12 @@ export const RemindersView: React.FC = () => {
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                         {rem.category}
                       </span>
+                      {rem.isRecurring && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 flex items-center space-x-1">
+                          <RotateCcw className="w-2.5 h-2.5" />
+                          <span>{rem.frequency || 'Weekly'}</span>
+                        </span>
+                      )}
                     </div>
 
                     {rem.description && (
@@ -365,10 +377,56 @@ export const RemindersView: React.FC = () => {
                 />
               </div>
 
+              {/* Recurring Switch */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block leading-tight">
+                        Is Recurring
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Automatically repeat this reminder
+                      </span>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isRecurring}
+                      onChange={(e) => setIsRecurring(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {isRecurring && (
+                  <div className="mt-2.5 pt-2 border-t border-dashed border-slate-200 dark:border-slate-800 animate-in fade-in">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Frequency
+                    </label>
+                    <select
+                      value={frequency}
+                      onChange={(e) => setFrequency(e.target.value as 'Daily' | 'Weekly' | 'Monthly')}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-900 dark:text-white"
+                    >
+                      <option value="Daily">Daily</option>
+                      <option value="Weekly">Weekly</option>
+                      <option value="Monthly">Monthly</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end space-x-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddOpen(false)}
+                  onClick={() => {
+                    setIsAddOpen(false);
+                    setIsRecurring(false);
+                  }}
                   className="px-3 py-1.5 text-xs text-slate-400"
                 >
                   Cancel

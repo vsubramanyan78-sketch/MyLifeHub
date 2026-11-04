@@ -219,6 +219,8 @@ export interface ReminderItem {
   status: 'pending' | 'completed' | 'snoozed';
   relatedModule?: 'DocuMind' | 'SpendSense' | 'FixFlow' | 'PantryPilot';
   relatedRecordId?: string;
+  isRecurring?: boolean;
+  frequency?: 'Daily' | 'Weekly' | 'Monthly';
   createdAt: string;
   completedAt?: string;
 }
