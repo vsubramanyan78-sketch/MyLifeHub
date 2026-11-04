@@ -1,0 +1,279 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile settings, currency, and preferences",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "preferredCurrency": { "type": "string" },
+        "country": { "type": "string" },
+        "timezone": { "type": "string" },
+        "dateFormat": { "type": "string" },
+        "monthlyBudget": { "type": "number" },
+        "theme": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["fullName", "email", "preferredCurrency"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "DocuMind document record with metadata, OCR, AI extraction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" },
+        "fileSize": { "type": "number" },
+        "fileUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "issuingOrg": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "refNumber": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "summary": { "type": "string" },
+        "confidence": { "type": "number" },
+        "isVerified": { "type": "boolean" },
+        "linkedAssetId": { "type": "string" },
+        "linkedTransactionId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "category", "status", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "SpendSense financial income, expense, transfer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "reportingAmount": { "type": "number" },
+        "reportingCurrency": { "type": "string" },
+        "exchangeRate": { "type": "number" },
+        "type": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "date": { "type": "string" },
+        "accountId": { "type": "string" },
+        "accountName": { "type": "string" },
+        "notes": { "type": "string" },
+        "sourceModule": { "type": "string" },
+        "sourceRecordId": { "type": "string" },
+        "isRecurring": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "description", "amount", "currency", "type", "category", "date"]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "Bank account, wallet, or card",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "currency": { "type": "string" },
+        "balance": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "type", "currency", "balance"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly or category budget with threshold alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "month": { "type": "string" },
+        "thresholdPercent": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "category", "amount", "currency"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "FixFlow household, vehicle, electronics, or appliance asset",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "purchaseDate": { "type": "string" },
+        "purchasePrice": { "type": "number" },
+        "currency": { "type": "string" },
+        "warrantyEndDate": { "type": "string" },
+        "condition": { "type": "string" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" },
+        "documentRefId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "category", "createdAt"]
+    },
+    "MaintenanceRecord": {
+      "title": "MaintenanceRecord",
+      "description": "Asset maintenance and repair service record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "assetId": { "type": "string" },
+        "assetName": { "type": "string" },
+        "serviceDate": { "type": "string" },
+        "description": { "type": "string" },
+        "provider": { "type": "string" },
+        "cost": { "type": "number" },
+        "currency": { "type": "string" },
+        "nextServiceDate": { "type": "string" },
+        "status": { "type": "string" },
+        "linkedExpenseId": { "type": "string" },
+        "documentRefId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "assetId", "serviceDate", "description", "status"]
+    },
+    "PantryItem": {
+      "title": "PantryItem",
+      "description": "PantryPilot inventory item with stock & expiry tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "lowStockThreshold": { "type": "number" },
+        "purchaseDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "category", "quantity", "unit", "createdAt"]
+    },
+    "ShoppingList": {
+      "title": "ShoppingList",
+      "description": "Shopping list and grocery purchase planning",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "items": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "createdAt"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Automation Centre reminder item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "relatedModule": { "type": "string" },
+        "relatedRecordId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "dueDate", "status", "createdAt"]
+    },
+    "AutomationEvent": {
+      "title": "AutomationEvent",
+      "description": "Cross-module event log ensuring idempotency and audit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "sourceModule": { "type": "string" },
+        "sourceRecordId": { "type": "string" },
+        "payload": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "eventType", "sourceModule", "sourceRecordId", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/profile/settings": {
+      "schema": "UserProfile",
+      "description": "User profile preferences, currency, and settings"
+    },
+    "/users/{userId}/documents/{documentId}": {
+      "schema": "Document",
+      "description": "DocuMind documents"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "SpendSense transactions"
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "SpendSense accounts"
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "SpendSense budgets"
+    },
+    "/users/{userId}/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "FixFlow assets"
+    },
+    "/users/{userId}/maintenanceRecords/{recordId}": {
+      "schema": "MaintenanceRecord",
+      "description": "FixFlow maintenance records"
+    },
+    "/users/{userId}/pantryItems/{itemId}": {
+      "schema": "PantryItem",
+      "description": "PantryPilot pantry items"
+    },
+    "/users/{userId}/shoppingLists/{listId}": {
+      "schema": "ShoppingList",
+      "description": "PantryPilot shopping lists"
+    },
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "Automation Centre reminders"
+    },
+    "/users/{userId}/automationEvents/{eventId}": {
+      "schema": "AutomationEvent",
+      "description": "Automation engine idempotent event logs"
+    }
+  }
+}
