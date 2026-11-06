@@ -426,6 +426,102 @@ Return valid JSON:
   }
 });
 
+// --- Gemini AI Expense Categorization ---
+app.post('/api/gemini/categorize-expense', async (req: Request, res: Response) => {
+  try {
+    const { description } = req.body;
+    if (!description || typeof description !== 'string') {
+      return res.status(400).json({ success: false, error: 'Description is required' });
+    }
+
+    const ai = getGeminiClient();
+    const categoriesList = [
+      'Food',
+      'Groceries',
+      'Transportation',
+      'Housing',
+      'Utilities',
+      'Healthcare',
+      'Education',
+      'Shopping',
+      'Entertainment',
+      'Travel',
+      'Household Maintenance',
+      'Subscriptions',
+      'Salary',
+      'Investments',
+      'Other',
+    ];
+
+    if (!ai) {
+      // Heuristic offline categorization fallback
+      const descLower = description.toLowerCase();
+      let category = 'Other';
+      if (/grocery|groceries|supermarket|walmart|trader joe|whole foods|costco|market|food store/i.test(descLower)) {
+        category = 'Groceries';
+      } else if (/restaurant|latte|coffee|cafe|lunch|dinner|breakfast|burger|pizza|starbucks|mcdonald|food|eat|swiggy|zomato/i.test(descLower)) {
+        category = 'Food';
+      } else if (/uber|lyft|cab|taxi|metro|bus|train|subway|gas|fuel|petrol|parking|toll|transit/i.test(descLower)) {
+        category = 'Transportation';
+      } else if (/rent|mortgage|lease|property tax|housing/i.test(descLower)) {
+        category = 'Housing';
+      } else if (/electricity|water|gas bill|wifi|internet|utility|power|sewer/i.test(descLower)) {
+        category = 'Utilities';
+      } else if (/doctor|clinic|pharmacy|medicine|hospital|dental|health|lab test/i.test(descLower)) {
+        category = 'Healthcare';
+      } else if (/tuition|school|college|course|book|udemy|coursera|exam/i.test(descLower)) {
+        category = 'Education';
+      } else if (/amazon|clothes|apparel|shoes|electronics|shopping|mall|nike|zara/i.test(descLower)) {
+        category = 'Shopping';
+      } else if (/movie|cinema|concert|game|bowling|ticket|theater/i.test(descLower)) {
+        category = 'Entertainment';
+      } else if (/flight|airline|hotel|airbnb|vacation|resort|tour/i.test(descLower)) {
+        category = 'Travel';
+      } else if (/plumber|electrician|repair|lawn|painting|cleaning|pest|hardware/i.test(descLower)) {
+        category = 'Household Maintenance';
+      } else if (/netflix|spotify|hulu|disney|apple|youtube|subscription|membership/i.test(descLower)) {
+        category = 'Subscriptions';
+      }
+      return res.json({ success: true, category, rationale: 'Heuristic keyword match (local offline mode)' });
+    }
+
+    const systemInstruction = `You are SpendSense AI, an intelligent personal expense categorizer for MyLifeHub.
+Categorize the user's expense description into EXACTLY one of these allowed categories:
+${JSON.stringify(categoriesList)}
+
+Return valid JSON:
+{
+  "category": string (must be one of the exact strings in allowed categories list),
+  "confidence": number (between 0.0 and 1.0),
+  "rationale": string (short 1-sentence reasoning)
+}`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: [{ text: `Analyze and categorize this expense description: "${description}"` }],
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const text = response.text || '{}';
+    const parsed = JSON.parse(text);
+    const validCategory = categoriesList.includes(parsed.category) ? parsed.category : 'Other';
+
+    return res.json({
+      success: true,
+      category: validCategory,
+      confidence: parsed.confidence || 0.9,
+      rationale: parsed.rationale || `Categorized as ${validCategory} based on financial patterns.`,
+    });
+  } catch (err: any) {
+    console.error('Error in categorize-expense:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to categorize expense' });
+  }
+});
+
+
 // --- Multi-Turn Chatbot with Memory ---
 app.post('/api/gemini/chat', async (req: Request, res: Response) => {
   try {

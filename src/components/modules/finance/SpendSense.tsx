@@ -33,6 +33,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
@@ -174,6 +175,50 @@ export const SpendSense: React.FC = () => {
   // Recommended daily limit for remainder of month to stay under budget
   const remainingBudget = Math.max(0, monthlyBudgetLimit - currentMonthSpent);
   const recommendedDailyPace = daysRemaining > 0 ? remainingBudget / daysRemaining : 0;
+
+  // Predictive Chart view state ('bar' progress bar vs 'pie' breakdown)
+  const [predictiveChartMode, setPredictiveChartMode] = useState<'bar' | 'pie'>('bar');
+
+  // Dynamic Recharts Data for Predictive Monthly Budget insight
+  const predictiveChartData = [
+    {
+      name: 'Actual Spent',
+      amount: currentMonthSpent,
+      fill: '#10b981', // Emerald
+    },
+    {
+      name: 'Forecast Month-End',
+      amount: forecastedMonthEndSpend,
+      fill: isProjectedOver ? '#ef4444' : '#f59e0b', // Red if overspend, Amber if normal
+    },
+    {
+      name: 'Budget Limit',
+      amount: monthlyBudgetLimit,
+      fill: '#3b82f6', // Blue
+    },
+  ];
+
+  const predictivePieData = [
+    {
+      name: 'Spent to Date',
+      value: currentMonthSpent,
+      color: '#10b981',
+    },
+    {
+      name: 'Remaining Forecasted Pace',
+      value: Math.max(0, forecastedMonthEndSpend - currentMonthSpent),
+      color: isProjectedOver ? '#ef4444' : '#f59e0b',
+    },
+    ...(monthlyBudgetLimit > forecastedMonthEndSpend
+      ? [
+          {
+            name: 'Budget Savings Buffer',
+            value: monthlyBudgetLimit - forecastedMonthEndSpend,
+            color: '#3b82f6',
+          },
+        ]
+      : []),
+  ];
 
   // CSV Import State
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
@@ -814,6 +859,106 @@ export const SpendSense: React.FC = () => {
                 <span className="text-base font-extrabold text-slate-900 dark:text-white">
                   {formatCurrency(monthlyBudgetLimit, reportingCurrency)}
                 </span>
+              </div>
+            </div>
+
+            {/* Recharts Dynamic Progress & Budget Allocation Visualizer */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex items-center space-x-2">
+                  <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500">
+                    <PieIcon className="w-4 h-4" />
+                  </span>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    Recharts Predictive Spending Visualizer
+                  </h4>
+                </div>
+
+                <div className="flex items-center space-x-1.5 bg-slate-200/60 dark:bg-slate-900 p-1 rounded-xl">
+                  <button
+                    onClick={() => setPredictiveChartMode('bar')}
+                    className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      predictiveChartMode === 'bar'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    📊 Bar Comparison
+                  </button>
+                  <button
+                    onClick={() => setPredictiveChartMode('pie')}
+                    className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      predictiveChartMode === 'pie'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    🥧 Allocation Pie
+                  </button>
+                </div>
+              </div>
+
+              {/* Chart Rendering Container */}
+              <div className="h-56 w-full pt-2">
+                {predictiveChartMode === 'bar' ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={predictiveChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderColor: '#334155',
+                          borderRadius: '12px',
+                          color: '#fff',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: any) => [formatCurrency(Number(value), reportingCurrency), 'Amount']}
+                      />
+                      <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                        {predictiveChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={predictivePieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {predictivePieData.map((entry, index) => (
+                          <Cell key={`pie-cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderColor: '#334155',
+                          borderRadius: '12px',
+                          color: '#fff',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: any) => [formatCurrency(Number(value), reportingCurrency), 'Value']}
+                      />
+                      <Legend
+                        formatter={(value) => <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">{value}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 

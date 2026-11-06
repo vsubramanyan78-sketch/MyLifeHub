@@ -66,11 +66,13 @@ const MainAppContent: React.FC = () => {
   >(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
 
-  // Quick Expense fields
+  // Quick Expense fields & AI categorization state
   const [qExpenseDesc, setQExpenseDesc] = useState('');
   const [qExpenseAmount, setQExpenseAmount] = useState('');
   const [qExpenseCat, setQExpenseCat] = useState<TransactionCategory>('Food');
   const [qExpenseAcc, setQExpenseAcc] = useState(accounts[0]?.id || '');
+  const [isCategorizing, setIsCategorizing] = useState(false);
+  const [aiRationale, setAiRationale] = useState<string | null>(null);
 
   // Quick Asset fields
   const [qAssetName, setQAssetName] = useState('');
@@ -112,15 +114,54 @@ const MainAppContent: React.FC = () => {
     }
   };
 
+  // Helper to categorize description using Gemini AI API
+  const categorizeWithGemini = async (desc: string): Promise<TransactionCategory | null> => {
+    if (!desc.trim()) return null;
+    try {
+      setIsCategorizing(true);
+      const res = await fetch('/api/gemini/categorize-expense', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: desc }),
+      });
+      const data = await res.json();
+      if (data.success && data.category) {
+        setQExpenseCat(data.category);
+        setAiRationale(data.rationale || `Categorized as ${data.category}`);
+        return data.category;
+      }
+    } catch (err) {
+      console.warn('Gemini categorization fetch failed:', err);
+    } finally {
+      setIsCategorizing(false);
+    }
+    return null;
+  };
+
   const handleQuickAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!qExpenseDesc || !qExpenseAmount) return;
+
+    // Enhance: Call Gemini AI API to analyze description and determine appropriate category automatically
+    let finalCategory = qExpenseCat;
+    try {
+      setIsCategorizing(true);
+      const aiSuggested = await categorizeWithGemini(qExpenseDesc);
+      if (aiSuggested) {
+        finalCategory = aiSuggested;
+      }
+    } catch (err) {
+      console.warn('Gemini auto-categorize failed in handleQuickAddExpense:', err);
+    } finally {
+      setIsCategorizing(false);
+    }
+
     await addTransaction({
       description: qExpenseDesc,
       amount: Number(qExpenseAmount),
       currency: profile?.preferredCurrency || 'INR',
       type: 'expense',
-      category: qExpenseCat,
+      category: finalCategory,
       date: new Date().toISOString().split('T')[0],
       accountId: qExpenseAcc || accounts[0]?.id || 'default_acc',
       accountName: accounts.find((a) => a.id === qExpenseAcc)?.name || 'Primary Wallet',
@@ -129,6 +170,7 @@ const MainAppContent: React.FC = () => {
     setQuickAction(null);
     setQExpenseDesc('');
     setQExpenseAmount('');
+    setAiRationale(null);
   };
 
   const handleQuickAddAsset = async (e: React.FormEvent) => {
@@ -277,17 +319,40 @@ const MainAppContent: React.FC = () => {
 
             <form onSubmit={handleQuickAddExpense} className="space-y-3 mt-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Description *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Description *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => categorizeWithGemini(qExpenseDesc)}
+                    disabled={isCategorizing || !qExpenseDesc.trim()}
+                    className="text-[11px] font-medium text-indigo-500 hover:text-indigo-400 flex items-center space-x-1 disabled:opacity-40"
+                    title="Auto-categorize with Gemini AI"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{isCategorizing ? 'Analyzing...' : 'AI Categorize'}</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   required
                   value={qExpenseDesc}
                   onChange={(e) => setQExpenseDesc(e.target.value)}
-                  placeholder="e.g. Lunch with colleagues, Metro pass"
+                  onBlur={() => {
+                    if (qExpenseDesc.trim().length > 2) {
+                      categorizeWithGemini(qExpenseDesc);
+                    }
+                  }}
+                  placeholder="e.g. Starbucks Latte, Uber to Airport, Supermarket Grocery"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-xs"
                 />
+                {aiRationale && (
+                  <div className="mt-1.5 p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 flex items-center space-x-1">
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{aiRationale}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -307,7 +372,7 @@ const MainAppContent: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Category
+                    Category {isCategorizing && '(AI Suggesting...)'}
                   </label>
                   <select
                     value={qExpenseCat}
@@ -317,9 +382,17 @@ const MainAppContent: React.FC = () => {
                     <option value="Food">Food</option>
                     <option value="Groceries">Groceries</option>
                     <option value="Transportation">Transportation</option>
-                    <option value="Shopping">Shopping</option>
+                    <option value="Housing">Housing</option>
                     <option value="Utilities">Utilities</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Education">Education</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Travel">Travel</option>
                     <option value="Household Maintenance">Household</option>
+                    <option value="Subscriptions">Subscriptions</option>
+                    <option value="Salary">Salary</option>
+                    <option value="Investments">Investments</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
